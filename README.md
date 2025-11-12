@@ -1,6 +1,6 @@
 # omim-ingest
 
-| [Documentation](https://monarch-initiative.github.io/omim-ingest) |
+| [Documentation](https://kevinschaper.github.io/omim-ingest) |
 
 OMIM gene to disease associations
 
