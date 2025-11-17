@@ -13,12 +13,12 @@ OMIM morbidmap format documentation:
 - Braces { } = mutations contributing to susceptibility to multifactorial disorders
 - Question mark ? = provisional relationship between phenotype and gene
 
-Biolink Model Mappings (from biolink_model SchemaView research):
+Biolink Model Mappings:
 - CausalGeneToDiseaseAssociation uses predicate subproperty of "affects"
   → Use "biolink:causes" (RO:0003303) for confidence level (3)
 - CorrelatedGeneToDiseaseAssociation uses predicate subproperty of "correlated with"
   → Use "biolink:contributes_to" (RO:0002326) for levels (1) and (2)
-  → Use "biolink:predisposes_to_condition" for susceptibility cases {braces}
+  → Use "biolink:contributes_to" for susceptibility cases {braces} (overrides confidence)
 
 See the Koza documentation for more information on testing transforms:
 https://koza.monarchinitiative.org/Usage/testing/
@@ -164,27 +164,37 @@ def test_nondisease_association(nondisease_row_entities):
 
 
 def test_susceptibility_association(susceptibility_row_entities):
-    """Test parsing of susceptibility to multifactorial disorder (with braces)."""
+    """Test parsing of susceptibility to multifactorial disorder (with braces).
+
+    Susceptibility markers override confidence level to align with HPOA's
+    POLYGENIC classification which uses contributes_to.
+    """
     assert susceptibility_row_entities
     assert len(susceptibility_row_entities) == 1
 
     association = susceptibility_row_entities[0]
+    # Susceptibility overrides confidence (3) → contributes_to
     assert isinstance(association, CorrelatedGeneToDiseaseAssociation)
     assert association.subject == "OMIM:600451"
     assert association.object == "OMIM:614279"
-    assert association.predicate == "biolink:predisposes_to_condition"  # Susceptibility
+    assert association.predicate == "biolink:contributes_to"
 
 
 def test_provisional_susceptibility_association(provisional_susceptibility_row_entities):
-    """Test parsing of provisional susceptibility (both ? and {})."""
+    """Test parsing of provisional susceptibility (both ? and {}).
+
+    Susceptibility markers take precedence over confidence level, aligning with
+    HPOA's POLYGENIC classification.
+    """
     assert provisional_susceptibility_row_entities
     assert len(provisional_susceptibility_row_entities) == 1
 
     association = provisional_susceptibility_row_entities[0]
+    # Susceptibility takes precedence over confidence (3) → contributes_to
     assert isinstance(association, CorrelatedGeneToDiseaseAssociation)
     assert association.subject == "OMIM:162230"
     assert association.object == "OMIM:105400"
-    assert association.predicate == "biolink:predisposes_to_condition"  # Susceptibility takes precedence
+    assert association.predicate == "biolink:contributes_to"
 
 
 def test_confidence_level_2(confidence_level_2_row_entities):

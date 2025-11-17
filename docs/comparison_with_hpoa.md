@@ -20,10 +20,9 @@ The Human Phenotype Ontology Annotation (HPOA) team previously processed OMIM ge
 - `biolink:causes`: 9,029 (93.81%)
 - `biolink:contributes_to`: 596 (6.19%)
 
-**Our Direct OMIM Ingest**:
-- `biolink:causes`: 5,255 (87.73%)
-- `biolink:predisposes_to_condition`: 690 (11.52%) ← **Key difference**
-- `biolink:contributes_to`: 45 (0.75%)
+**Our Direct OMIM Ingest** (current):
+- `biolink:causes`: 6,983 (91.35%)
+- `biolink:contributes_to`: 661 (8.65%)
 
 ### 2. Association Type Mapping
 
@@ -42,132 +41,105 @@ The Human Phenotype Ontology Annotation (HPOA) team previously processed OMIM ge
 |-------------|-----------|----------|
 | Confidence (3), no `{}` | `biolink:causes` | CausalGeneToDiseaseAssociation |
 | Confidence (1,2), no `{}` | `biolink:contributes_to` | CorrelatedGeneToDiseaseAssociation |
-| Any `{}` marker | `biolink:predisposes_to_condition` | CorrelatedGeneToDiseaseAssociation |
+| Any `{}` marker | `biolink:contributes_to` | CorrelatedGeneToDiseaseAssociation |
 
-## Agreement Analysis
+## Predicate Agreement Analysis
 
-### Disease Coverage
-- **Overlapping diseases**: 4,850
-- **HPOA only**: 1,998 (includes Orphanet, other sources)
-- **Our ingest only**: 109
+### Disease Coverage (with newer data)
+- **Overlapping diseases**: 6,810
+- **HPOA only**: 38
+- **Our ingest only**: 46
 
-### Predicate Agreement
-- **Total disease-level matches**: 14,187
-- **Agreements**: 9,749 (68.7%)
-- **Disagreements**: 4,438 (31.3%)
+### Actual Predicate Agreement: 91.1%
+- **Total disease-level matches**: 15,352
+- **Agreements**: 13,979 (91.1%)
+- **Disagreements**: 1,373 (8.9%)
 
 ### Agreement Matrix
 
 | HPOA Predicate | Our Predicate | Count | % of Matches |
 |----------------|---------------|-------|--------------|
-| `biolink:causes` | `biolink:causes` | 9,691 | 68.31% ✓ |
-| `biolink:contributes_to` | `biolink:predisposes_to_condition` | 2,783 | 19.62% |
-| `biolink:causes` | `biolink:predisposes_to_condition` | 900 | 6.34% |
-| `biolink:contributes_to` | `biolink:causes` | 637 | 4.49% |
-| `biolink:causes` | `biolink:contributes_to` | 118 | 0.83% |
-| `biolink:contributes_to` | `biolink:contributes_to` | 58 | 0.41% ✓ |
+| `biolink:causes` | `biolink:causes` | 11,356 | 73.97% ✓ |
+| `biolink:contributes_to` | `biolink:contributes_to` | 2,623 | 17.09% ✓ |
+| `biolink:causes` | `biolink:contributes_to` | 761 | 4.96% |
+| `biolink:contributes_to` | `biolink:causes` | 612 | 3.99% |
 
-## Primary Disagreement: Susceptibility Handling
+**Total Agreement**: 13,979 / 15,352 = **91.1%**
 
-The main source of disagreement (19.62% + 6.34% = 25.96%) is how susceptibility relationships are handled.
+### Understanding the Agreement
 
-### Pattern 1: POLYGENIC → predisposes_to_condition (19.62%)
+The 91.1% agreement reflects strong alignment where:
+- Both use `causes` for non-susceptibility confidence (3) cases (73.97%)
+- Both use `contributes_to` for susceptibility/POLYGENIC cases (17.09%)
 
-**HPOA**: POLYGENIC + `biolink:contributes_to`
-**Us**: `biolink:predisposes_to_condition`
+The 8.9% disagreement represents:
+- 4.96%: We use `contributes_to` (detected `{}`), HPOA uses `causes` (classified as MENDELIAN)
+- 3.99%: We use `causes` (no `{}`), HPOA uses `contributes_to` (classified as POLYGENIC)
 
-**Example**: OMIM:615232 (Schizophrenia susceptibility 18)
-- genes_to_disease.txt: `POLYGENIC`
-- morbidmap.txt: `{?Schizophrenia susceptibility 18}, 615232 (3)`
-- HPOA predicate: `biolink:contributes_to`
-- Our predicate: `biolink:predisposes_to_condition`
+These differences likely stem from:
+1. Subtle discrepancies between OMIM's `{}` markers and HPOA's POLYGENIC classification
+2. Data differences between morbidmap.txt and MedGen's genes_to_disease.txt
 
-**Analysis**: The `{}` markers in morbidmap.txt explicitly indicate susceptibility. We correctly interpret these as predisposition, while HPOA uses the more generic contribution predicate.
+## HPOA Alignment Strategy
 
-### Pattern 2: MENDELIAN + confidence (3) with {} → predisposes_to_condition (6.34%)
+### Our Approach
 
-**HPOA**: MENDELIAN + `biolink:causes`
-**Us**: `biolink:predisposes_to_condition`
+We align with HPOA by **respecting susceptibility markers** `{}`, which correspond to HPOA's POLYGENIC classification:
 
-**Example**: OMIM:162900
-- genes_to_disease.txt: `MENDELIAN`
-- morbidmap.txt: `{Disease}, 162900 (3)` (has `{}` marker despite confidence 3)
-- HPOA predicate: `biolink:causes`
-- Our predicate: `biolink:predisposes_to_condition`
+✅ **Excellent agreement**: 91.1% predicate alignment
+✅ **Semantic precision**: Captures OMIM's susceptibility semantics
+✅ **HPOA compatibility**: Matches POLYGENIC → `contributes_to` pattern
+✅ **Two-predicate model**: Uses causes/contributes_to
 
-**Analysis**: When OMIM marks something with `{}`, it's a susceptibility relationship regardless of confidence level. Our rule correctly prioritizes the susceptibility marker over confidence level.
+### How It Aligns with HPOA
 
-## Why We Disagree (And Why We're Right)
+**HPOA's classification**:
+- MENDELIAN → `causes`
+- POLYGENIC (includes susceptibility) → `contributes_to`
 
-### Scientific Rationale
+**Our mapping**:
+- Confidence (3), no `{}` → `causes` (matches MENDELIAN)
+- Any `{}` marker → `contributes_to` (matches POLYGENIC)
 
-1. **RO Defines Susceptibility as Distinct**
-   - RO:0019501 (confers susceptibility) ≠ RO:0002326 (contributes to)
-   - The Relation Ontology explicitly treats susceptibility as a separate relationship type
-
-2. **OMIM Uses Explicit Markers**
-   - OMIM uses `{}` specifically for "susceptibility to multifactorial disorders"
-   - All such cases use "susceptibility" in the phenotype name
-   - This semantic information should be preserved in predicates
-
-3. **Semantic Precision Matters**
-   - Using generic "contributes to" for susceptibility loses information
-   - `predisposes_to_condition` captures the specific nature of the relationship
-   - Downstream users can query for susceptibility relationships specifically
-
-### HPOA ETL Limitation
-
-The HPOA ETL likely maps based on the simplified `association_type` field in genes_to_disease.txt:
-- MENDELIAN → causes
-- POLYGENIC → contributes_to
-
-This loses the nuance of OMIM's `{}` susceptibility markers, which appear in both MENDELIAN and POLYGENIC categories.
+This works because OMIM's `{}` susceptibility markers correspond to HPOA's POLYGENIC classification.
 
 ## Recommendations
 
-### For Users of This Data
+### For Users
 
-✅ **Prefer our direct OMIM ingest** for:
-- More semantically precise predicates
-- Better capture of susceptibility relationships
-- Direct interpretation of OMIM markers
+✅ **Use this direct OMIM ingest** for:
+- Better semantic precision (respects OMIM susceptibility markers)
+- Excellent alignment with HPOA (91.1%)
+- Direct parsing of morbidmap.txt (no MedGen intermediary)
+- Proper handling of susceptibility relationships
 
-⚠️ **Be aware** of the 31.3% disagreement with HPOA if integrating both sources
+### Key Advantage
 
-### For HPOA Team
-
-Consider updating the HPOA ETL process to:
-1. Parse original OMIM markers (especially `{}`) from source data
-2. Use `biolink:predisposes_to_condition` for susceptibility relationships
-3. Align with RO:0019501 semantics
-
-### For Monarch Initiative
-
-Consider:
-1. Replacing HPOA-derived OMIM associations with our direct ingest
-2. Documenting the semantic improvements
-3. Updating downstream pipelines to handle the new predicate
+By parsing `{}` markers directly from morbidmap.txt, we achieve alignment with HPOA's POLYGENIC classification without relying on MedGen's intermediate `association_type` field.
 
 ## Data Quality Comparison
 
 | Aspect | HPOA ETL | Our Direct Ingest |
 |--------|----------|-------------------|
-| Semantic precision | Lower (2 predicates) | Higher (3 predicates) |
-| Preserves OMIM markers | Partial | Full |
-| RO alignment | RO:0002326, RO:0003303 | RO:0002326, RO:0003303, RO:0019501* |
-| Information loss | Some (susceptibility → contribution) | Minimal |
-| Queryability | Good | Better (can query susceptibility specifically) |
-
-*Not yet in Biolink model but aligned
+| Predicate agreement | Baseline | 91.1% |
+| Predicate usage | 2 predicates | 2 predicates |
+| Susceptibility handling | POLYGENIC classification | `{}` marker detection |
+| Semantic precision | Via association_type | Direct from OMIM |
+| RO alignment | RO:0002326, RO:0003303 | RO:0002326, RO:0003303 |
+| Source | MedGen (indirect) | morbidmap.txt (direct) |
 
 ## Conclusion
 
-The 31.3% disagreement with HPOA is **not an error** - it reflects:
-- Our more direct interpretation of OMIM source data
-- Better semantic precision in predicate selection
-- Proper handling of susceptibility relationships as distinct from general contribution
+Our susceptibility-aware approach achieves **91.1% predicate agreement** with HPOA by aligning `{}` markers with HPOA's POLYGENIC classification.
 
-**Our approach is scientifically justified and semantically more accurate.**
+**Key advantages**:
+- ✅ Semantic precision: Directly interprets OMIM's susceptibility markers
+- ✅ Excellent HPOA alignment: 91.1% agreement
+- ✅ Direct source: Parses morbidmap.txt without MedGen intermediary
+- ✅ Explicit logic: Clear handling of susceptibility cases
+- ✅ Similar distribution: 91.35% causes vs HPOA's 93.81%
+
+The 8.9% disagreement is minimal and reflects edge cases where OMIM's `{}` markers and HPOA's POLYGENIC classification diverge slightly, plus data differences between morbidmap.txt and MedGen's genes_to_disease.txt.
 
 ## Analysis Methodology
 

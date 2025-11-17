@@ -12,8 +12,11 @@ OMIM morbidmap format:
 Biolink mapping:
 - (3) → CausalGeneToDiseaseAssociation with "biolink:causes"
 - (1)/(2) → CorrelatedGeneToDiseaseAssociation with "biolink:contributes_to"
-- { } susceptibility → "biolink:predisposes_to_condition"
+- { } susceptibility → "biolink:contributes_to" (overrides confidence level)
 - (4) chromosomal → skip (not gene-to-disease)
+
+Note: Susceptibility markers { } take precedence over confidence levels to align
+with HPOA's POLYGENIC classification which uses contributes_to for these cases.
 """
 
 import re
@@ -79,9 +82,12 @@ def transform_record(koza_transform: KozaTransform, row: dict[str, Any]) -> list
     is_nondisease = '[' in phenotype  # Nondisease (genetic variation)
 
     # Determine predicate and association type based on confidence and markers
+    # Susceptibility markers take precedence to align with HPOA's POLYGENIC classification
     if is_susceptibility:
-        # Susceptibility uses predisposes_to_condition regardless of confidence
-        predicate = "biolink:predisposes_to_condition"
+        # Susceptibility overrides confidence - always use contributes_to
+        # This aligns with HPOA's POLYGENIC classification which uses contributes_to
+        # Examples: {Schizophrenia susceptibility}, 615232 (3) → contributes_to
+        predicate = "biolink:contributes_to"
         association_class = CorrelatedGeneToDiseaseAssociation
     elif confidence_level == 3:
         # Molecular basis known - causal relationship

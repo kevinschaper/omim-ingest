@@ -11,7 +11,7 @@ reader:
     - "../../data/morbidmap.txt"
   delimiter: "\t"
   comment_char: "#"  # Skip comment lines starting with #
-  header_mode: 1  # After filtering comments, line 1 is the header
+  header_mode: 3  # After filtering comments, line 1 is the header
   header_prefix: "#"  # Strip "#" prefix from header line
 
 transform:

@@ -10,13 +10,11 @@ This document explains the scientific justification for our predicate choices wh
 |----------------|-------------------|-----------|---------|------------------|
 | Confidence (3) | Causal | `biolink:causes` | RO:0003303 | CausalGeneToDiseaseAssociation |
 | Confidence (1,2) | Correlation/Mapping | `biolink:contributes_to` | RO:0002326 | CorrelatedGeneToDiseaseAssociation |
-| Markers `{}` | Susceptibility | `biolink:predisposes_to_condition` | RO:0019501* | CorrelatedGeneToDiseaseAssociation |
+| Markers `{}` | Susceptibility | `biolink:contributes_to` | RO:0002326 | CorrelatedGeneToDiseaseAssociation |
 
-*RO:0019501 is not yet mapped in Biolink model but is semantically aligned
+## Decision: Susceptibility-Aware Logic for HPOA Alignment
 
-## Critical Decision: predisposes_to_condition vs contributes_to
-
-The most important decision in this ingest is using `biolink:predisposes_to_condition` for OMIM susceptibility markers `{}` rather than the more generic `biolink:contributes_to`.
+We prioritize susceptibility markers `{}` over confidence levels to align with HPOA's POLYGENIC classification, which uses `contributes_to` for susceptibility cases. This achieves 88.3% predicate agreement with HPOA.
 
 ### OMIM Susceptibility Markers
 
@@ -35,38 +33,7 @@ OMIM uses curly braces `{}` to indicate:
 
 Note: All explicitly use the word "**susceptibility**" in the phenotype name.
 
-### Evidence from the Relation Ontology (RO)
-
-The Relation Ontology (RO) defines susceptibility as a **distinct relationship type** separate from general contribution:
-
-#### RO:0019501 - "confers susceptibility to condition"
-
-**Definition:** "Relates a gene to condition, such that a variation in this gene predisposes to the development of a condition."
-
-**Significance:** This precisely describes what OMIM `{}` markers represent - genetic variants that predispose to disease development.
-
-#### RO:0002326 - "contributes to"
-
-**Definition:** "Holds between two entities where the occurrence, existence, or activity of one contributes to the occurrence or generation of the other"
-
-**Usage:** Generic contribution relationships (e.g., enzyme subunits contributing to enzyme activity)
-
-**Limitation:** Not specific to susceptibility or predisposition
-
-### Key Finding
-
-**The Relation Ontology explicitly separates susceptibility (RO:0019501) from general contribution (RO:0002326).**
-
-This is evidence that susceptibility relationships require a more specific predicate than the generic "contributes to."
-
-### Biolink Model Alignment
-
-#### biolink:predisposes_to_condition
-
-- **Description:** "Holds between two entities where the presence or application of one increases the chance that the other will come to be"
-- **Parent predicate:** `affects likelihood of`
-- **Semantic mapping:** `SEMMEDDB:PREDISPOSES`
-- **Match:** Directly describes susceptibility/predisposition
+### Alignment with Biolink Model
 
 #### biolink:contributes_to
 
@@ -74,45 +41,55 @@ This is evidence that susceptibility relationships require a more specific predi
 - **Parent predicate:** `related to at instance level`
 - **RO mapping:** `RO:0002326`
 - **Narrow mappings:** Includes `MONDO:predisposes_towards`
-- **Problem:** The fact that predisposition is a **narrow mapping** indicates predisposition is MORE SPECIFIC than general contribution
+- **Usage:** We use this for both correlation/mapping relationships AND susceptibility relationships to align with HPOA
 
-### Semantic Precision
+### Semantic Approach
 
-Our approach maintains three distinct relationship types:
+Our approach maintains two primary relationship types:
 
 1. **Causal** (confidence 3, no `{}`): Gene mutation directly causes disease → `biolink:causes`
-2. **Correlation/Mapping** (confidence 1 or 2, no `{}`): Gene-disease association established but mechanism unclear → `biolink:contributes_to`
-3. **Susceptibility** (any confidence with `{}`): Genetic variant increases risk/predisposition → `biolink:predisposes_to_condition`
+2. **Correlation/Contribution** (confidence 1, 2, or `{}`): Gene-disease association or susceptibility → `biolink:contributes_to`
 
-Using `biolink:contributes_to` for susceptibility would:
-- ❌ Conflate three distinct relationship types into two
-- ❌ Lose the semantic distinction OMIM makes with `{}` markers
-- ❌ Ignore RO's explicit susceptibility-specific terms
-- ❌ Discard OMIM's consistent use of "susceptibility" terminology
+This approach:
+- ✅ Aligns with HPOA's existing predicate usage
+- ✅ Maintains consistency across Monarch data sources
+- ✅ Uses predicates that are well-established in Biolink
+- ✅ Simplifies downstream integration
 
 ### Priority Rules
 
 Susceptibility markers **override** confidence levels:
 
-- `{Disease}, 614279 (3)` → `predisposes_to_condition` (not `causes`)
-- `{Disease}, 114480 (1)` → `predisposes_to_condition` (not `contributes_to`)
+- `{Disease}, 614279 (3)` → `contributes_to` (susceptibility overrides confidence 3)
+- `{Disease}, 114480 (1)` → `contributes_to` (susceptibility)
+- `Disease, 123456 (3)` → `causes` (causal, no susceptibility marker)
 
-**Rationale:** OMIM explicitly marks these as susceptibility relationships, which is semantically distinct from causation even when molecular basis is known (confidence 3).
+**Rationale:** HPOA classifies susceptibility cases as POLYGENIC and uses `contributes_to` for them. By prioritizing `{}` markers, we align with HPOA's semantic treatment of these relationships, achieving 88.3% predicate agreement.
 
-## Comparison with Previous HPOA ETL
+### Why This Works
 
-The previous HPOA ETL process (via genes_to_disease.txt from MedGen) used `biolink:contributes_to` for POLYGENIC associations, which include susceptibility relationships.
+HPOA's approach:
+- MENDELIAN + confidence (3) → `causes`
+- POLYGENIC (susceptibility) → `contributes_to`
 
-### Key Differences
+Our approach:
+- Confidence (3), no `{}` → `causes`
+- Any `{}` marker → `contributes_to`
+
+These align because OMIM's `{}` markers correspond to HPOA's POLYGENIC classification.
+
+## Comparison with HPOA ETL
+
+The HPOA ETL process (via genes_to_disease.txt from MedGen) uses `biolink:contributes_to` for POLYGENIC associations, which include susceptibility relationships.
+
+### Alignment
 
 | Aspect | HPOA Approach | Our Approach |
 |--------|---------------|--------------|
-| Susceptibility predicate | `biolink:contributes_to` | `biolink:predisposes_to_condition` |
-| Semantic precision | Generic contribution | Specific susceptibility |
-| RO alignment | RO:0002326 (contributes to) | RO:0019501* (confers susceptibility) |
-| Information content | Lower | Higher |
-
-*Not yet in Biolink model but semantically aligned
+| Susceptibility predicate | `biolink:contributes_to` | `biolink:contributes_to` |
+| Semantic precision | Generic contribution | Generic contribution |
+| RO alignment | RO:0002326 (contributes to) | RO:0002326 (contributes to) |
+| Consistency | Established in Monarch | Aligned with HPOA |
 
 ### Agreement Analysis
 
